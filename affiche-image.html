@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Affichage Image Streamlabs</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: transparent;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+  }
+  #img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: auto;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none; /* pour éviter d'interférer avec clics */
+  }
+  #img.visible {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+  <img id="img" src="" alt="Image à afficher" />
+  <script>
+    const img = document.getElementById('img');
+    let timeoutId = null;
+    let currentUrl = '';
+
+    async function checkImage() {
+      try {
+        // Ajout d'un timestamp pour éviter cache
+        const res = await fetch('https://tonserveur.com/imageToShow.json?' + Date.now());
+        if (!res.ok) throw new Error('Erreur réseau');
+
+        const data = await res.json();
+
+        if(data.url && data.url !== currentUrl) {
+          currentUrl = data.url;
+          img.src = currentUrl;
+
+          // Affiche avec fondu
+          img.classList.add('visible');
+
+          // Reset timer s'il y en avait un
+          if(timeoutId) clearTimeout(timeoutId);
+
+          // Après 4 secondes, masque avec fondu
+          timeoutId = setTimeout(() => {
+            img.classList.remove('visible');
+            currentUrl = ''; // reset url pour accepter même url si réutilisée
+          }, 4000);
+
+        } else if (!data.url) {
+          // Pas d'image à afficher -> masquer l'image
+          img.classList.remove('visible');
+          currentUrl = '';
+          if(timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+        }
+
+      } catch (e) {
+        // En cas d'erreur réseau ou JSON invalide
+        img.classList.remove('visible');
+        currentUrl = '';
+        if(timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      }
+    }
+
+    // Vérifie toutes les 2 secondes
+    setInterval(checkImage, 2000);
+
+    // Premier check immédiat au chargement
+    checkImage();
+  </script>
+</body>
+</html>
+
